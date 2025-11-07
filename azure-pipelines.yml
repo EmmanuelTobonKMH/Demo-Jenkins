@@ -46,24 +46,12 @@ stages:
     - script: echo "Skipping build — no build script defined"
       displayName: 'Build project (skipped)'
 
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/dist'
-        ArtifactName: 'drop'
-      displayName: 'Publish artifact'
-
     - task: Checkmarx AST@3
       inputs:
         CheckmarxService: 'juiceshop-connection'
         projectName: '$(Build.Repository.Name)'
         branchName: '$(Build.SourceBranchName)'
         tenantName: 'nfr_lugapel-ast'
-
-
-
-
-
-
 
 
 #- stage: Deploy
