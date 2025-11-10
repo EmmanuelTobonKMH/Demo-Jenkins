@@ -1,5 +1,4 @@
-# first pipeline
-# azure-pipelines.yml (ejemplo Node.js)
+# azure-pipelines.yml (Node.js - actualizado)
 trigger:
   branches:
     include:
@@ -14,7 +13,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  nodeVersion: '18.x'
+  nodeVersion: '22.x'    # <-- actualizado a Node 22
 
 stages:
 - stage: BuildAndScan
@@ -26,15 +25,30 @@ stages:
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
-      displayName: 'Use Node.js'
-
-    - script: npm i
-      displayName: 'Install dependencies'
+      displayName: 'Use Node.js $(nodeVersion)'
 
     - script: |
-        echo "Creando package-lock.json..."
-        npm install --package-lock-only
-      displayName: 'Generate package-lock.json'
+        node -v
+        npm -v
+      displayName: 'Show Node and NPM versions'
+
+    - task: Cache@2
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock.json'
+        path: ~/.npm
+      displayName: 'Cache npm'
+
+    - script: npm ci
+      displayName: 'Install dependencies (npm ci)'
+
+    - script: |
+        if [ ! -f package-lock.json ]; then
+          echo "Creando package-lock.json..."
+          npm install --package-lock-only
+        else
+          echo "package-lock.json ya existe"
+        fi
+      displayName: 'Ensure package-lock.json'
 
     - script: npm install -g @angular/cli
       displayName: 'Install Angular CLI'
@@ -43,15 +57,20 @@ stages:
         npm test || echo "Tests failed — continuing pipeline"
       displayName: 'Run unit tests (ignore failures)'
 
+    - script: npm audit --audit-level=moderate || true
+      displayName: 'Run npm audit (no-fail)'
+
     - script: echo "Skipping build — no build script defined"
       displayName: 'Build project (skipped)'
 
     - task: Checkmarx AST@3
       inputs:
-        CheckmarxService: 'juiceshop-connection'
+        CheckmarxService: 'juiceshop-connection'   # revisar que exista y tenga credenciales
         projectName: '$(Build.Repository.Name)'
         branchName: '$(Build.SourceBranchName)'
         tenantName: 'nfr_lugapel-ast'
+      displayName: 'Run Checkmarx AST scan'
+
 
 
 #- stage: Deploy
