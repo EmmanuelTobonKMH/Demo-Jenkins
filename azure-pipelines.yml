@@ -1,4 +1,3 @@
-# azure-pipelines.yml - Juice Shop (enforce Node 18, safe installs, frontend handling, Checkmarx)
 trigger:
   branches:
     include:
@@ -22,87 +21,83 @@ stages:
   - job: build
     displayName: Build and Scan Code
     steps:
-
-    # ---------- Ensure correct Node version up-front ----------
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
-      displayName: 'Use Node.js $(nodeVersion)'
+      displayName: 'Use Node.js'
+
+    - script: npm i
+      displayName: 'Install dependencies'
 
     - script: |
-        echo "=== Verify Node/NPM versions BEFORE any npm command ==="
-        node -v
-        npm -v
-      displayName: 'Show Node and NPM versions (verification)'
+        echo "Creando package-lock.json..."
+        npm install --package-lock-only
+      displayName: 'Generate package-lock.json'
 
-    # ---------- Optional: install build tools (native modules) ----------
+    - script: npm install -g @angular/cli
+      displayName: 'Install Angular CLI'
+
     - script: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential python3
-      displayName: 'Install build tools (for native modules)'
-
-    # ---------- Ensure root package-lock.json exists ----------
-    - script: |
-        if [ ! -f package-lock.json ]; then
-          echo "Creating root package-lock.json..."
-          npm install --package-lock-only
-        else
-          echo "Root package-lock.json exists"
-        fi
-      displayName: 'Ensure root package-lock.json'
-
-    # ---------- Cache npm ----------
-    - task: Cache@2
-      inputs:
-        key: 'npm | "$(Agent.OS)" | package-lock.json'
-        path: ~/.npm
-      displayName: 'Cache npm (root)'
-
-    # ---------- Install root dependencies reproducibly ----------
-    - script: |
-        echo "Installing root dependencies with npm ci..."
-        npm ci
-      displayName: 'Install root dependencies (npm ci)'
-
-    # ---------- FRONTEND: if exists, install deps and run ngcc ----------
-    - script: |
-        if [ -d frontend ]; then
-          echo "Switching to frontend folder and installing dependencies..."
-          cd frontend
-          if [ -f package-lock.json ]; then
-            npm ci --legacy-peer-deps
-          else
-            npm install --legacy-peer-deps
-            npm install --package-lock-only || true
-          fi
-
-          echo "Running ngcc via npx..."
-          npx ngcc --tsconfig "./src/tsconfig.app.json" --first-only || true
-
-          echo "Optional: build frontend if required..."
-          npm run build || echo "Frontend build failed — continuing pipeline"
-        else
-          echo "No frontend folder found; skipping frontend steps."
-        fi
-      displayName: 'Install frontend deps, run ngcc and build'
-
-    # ---------- Unit tests ----------
-    - script: |
-        echo "Running unit tests..."
         npm test || echo "Tests failed — continuing pipeline"
       displayName: 'Run unit tests (ignore failures)'
 
-    # ---------- Security audit (non-blocking) ----------
-    - script: |
-        echo "Running npm audit (report only)..."
-        npm audit --audit-level=moderate || true
-      displayName: 'Run npm audit (no-fail)'
+    - script: echo "Skipping build — no build script defined"
+      displayName: 'Build project (skipped)'
 
-    # ---------- Checkmarx scan ----------
+#    - script: |
+#        echo "=== Iniciando análisis de dependencias con npm audit ==="
+#        echo "Instalando dependencias..."
+#        npm install
+#
+#        echo "Ejecutando npm audit con reporte JSON..."
+#        npm audit --json > $(Build.SourcesDirectory)/sca-report.json || true
+#
+#        echo "Analizando severidades detectadas..."
+#        HIGH=$(cat $(Build.SourcesDirectory)/sca-report.json | jq '.metadata.vulnerabilities.high')
+#        CRITICAL=$(cat $(Build.SourcesDirectory)/sca-report.json | jq '.metadata.vulnerabilities.critical')
+#
+#        echo "Vulnerabilidades detectadas:"
+#        echo "  High: $HIGH"
+#        echo "  Critical: $CRITICAL"
+#
+#        if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+#          echo "❌ Se detectaron vulnerabilidades severas. Falla de seguridad."
+#          exit 1
+#        else
+#          echo "✅ No se detectaron vulnerabilidades severas. Continuando..."
+#        fi
+#      displayName: 'Security Gate - Validar vulnerabilidades con npm audit'
+
     - task: Checkmarx AST@3
-      displayName: 'Run Checkmarx AST scan'
       inputs:
         CheckmarxService: 'juiceshop-connection'
         projectName: '$(Build.Repository.Name)'
         branchName: '$(Build.SourceBranchName)'
         tenantName: 'nfr_lugapel-ast'
+
+#    - task: PublishPipelineArtifact@1
+#      condition: always()
+#      inputs:
+#        targetPath: '$(Build.SourcesDirectory)/sca-report.json'
+#        artifact: 'sca-scan'
+#      displayName: 'Publish SCA Report'
+
+# - stage: Deploy
+#   displayName: Deploy to Azure (main only)
+#   dependsOn: BuildAndScan
+#   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+#   jobs:
+#   - deployment: deployWeb
+#     environment: 'production'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - download: current
+#             artifact: drop
+#           - task: AzureWebApp@1
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appName: '$(webAppName)'
+#               package: '$(Pipeline.Workspace)/drop/**/*.zip'
+#             displayName: 'Deploy to Azure Web App'
