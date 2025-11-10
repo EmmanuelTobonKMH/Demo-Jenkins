@@ -1,4 +1,4 @@
-# azure-pipelines.yml (Node.js - actualizado)
+# azure-pipelines.yml - Juice Shop (Node 18, frontend handling, Checkmarx)
 trigger:
   branches:
     include:
@@ -13,7 +13,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  nodeVersion: '22.x'    # <-- actualizado a Node 22
+  nodeVersion: '18.x'    # Node compatible con juice-shop@15
 
 stages:
 - stage: BuildAndScan
@@ -22,6 +22,8 @@ stages:
   - job: build
     displayName: Build and Scan Code
     steps:
+
+    # -------------------------
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
@@ -31,37 +33,66 @@ stages:
         node -v
         npm -v
       displayName: 'Show Node and NPM versions'
+    # -------------------------
 
+    # Ensure root package-lock.json exists (so cache can use it)
     - script: |
         if [ ! -f package-lock.json ]; then
-          echo "Creando package-lock.json..."
+          echo "Creando package-lock.json en la raíz..."
           npm install --package-lock-only
         else
-          echo "package-lock.json ya existe"
+          echo "package-lock.json ya existe en la raíz"
         fi
-      displayName: 'Ensure package-lock.json'
-      
+      displayName: 'Ensure root package-lock.json'
+
+    # Cache npm (root) using package-lock.json
     - task: Cache@2
       inputs:
         key: 'npm | "$(Agent.OS)" | package-lock.json'
         path: ~/.npm
-      displayName: 'Cache npm'
+      displayName: 'Cache npm (root)'
 
+    # Install root dependencies reproducible
     - script: npm ci
-      displayName: 'Install dependencies (npm ci)'
+      displayName: 'Install root dependencies (npm ci)'
+
+    # -------------------------
+    # Frontend: install deps and run ngcc
+    # -------------------------
+    - script: |
+        if [ -d frontend ]; then
+          echo "Instalando dependencias en frontend..."
+          cd frontend
+          # Si frontend tiene package-lock.json usa npm ci, si no usa install con legacy-peer-deps
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps
+            npm install --package-lock-only || true
+          fi
+        else
+          echo "No existe carpeta 'frontend', se omite paso frontend install"
+        fi
+      displayName: 'Install frontend dependencies'
 
     - script: |
-        if [ ! -f package-lock.json ]; then
-          echo "Creando package-lock.json..."
-          npm install --package-lock-only
-        else
-          echo "package-lock.json ya existe"
+        if [ -d frontend ]; then
+          echo "Ejecutando ngcc en frontend (usando npx)..."
+          cd frontend
+          # usar npx para asegurar binario local
+          npx ngcc --tsconfig "./src/tsconfig.app.json" --first-only || true
         fi
-      displayName: 'Ensure package-lock.json'
+      displayName: 'Run ngcc (Angular compatibility compiler)'
 
-    - script: npm install -g @angular/cli
-      displayName: 'Install Angular CLI'
+    - script: |
+        if [ -d frontend ]; then
+          echo "Construyendo frontend (si el proyecto lo requiere)..."
+          cd frontend
+          npm run build || echo "Frontend build failed — continuing"
+        fi
+      displayName: 'Build frontend (if needed)'
 
+    # -------------------------
     - script: |
         npm test || echo "Tests failed — continuing pipeline"
       displayName: 'Run unit tests (ignore failures)'
@@ -69,36 +100,15 @@ stages:
     - script: npm audit --audit-level=moderate || true
       displayName: 'Run npm audit (no-fail)'
 
-    - script: echo "Skipping build — no build script defined"
-      displayName: 'Build project (skipped)'
+    - script: echo "Build step (skipped or handled above)"
+      displayName: 'Build project (info)'
 
+    # -------------------------
+    # Checkmarx AST task (ajusta service connection y inputs segun tu organización)
     - task: Checkmarx AST@3
+      displayName: 'Run Checkmarx AST scan'
       inputs:
-        CheckmarxService: 'juiceshop-connection'   # revisar que exista y tenga credenciales
+        CheckmarxService: 'juiceshop-connection'   # revisa que esta service connection exista en Project settings -> Service connections
         projectName: '$(Build.Repository.Name)'
         branchName: '$(Build.SourceBranchName)'
         tenantName: 'nfr_lugapel-ast'
-      displayName: 'Run Checkmarx AST scan'
-
-
-
-#- stage: Deploy
-#  displayName: Deploy to Azure (main only)
-#  dependsOn: Build
-#  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-#  jobs:
-#  - deployment: deployWeb
-#    environment: 'production'
-#    strategy:
-#      runOnce:
-#        deploy:
-#          steps:
-#          - download: current
-#            artifact: drop
-
-#         - task: AzureWebApp@1
-#            inputs:
-#              azureSubscription: '$(azureSubscription)'
-#              appName: '$(webAppName)'
-#              package: '$(Pipeline.Workspace)/drop/**/*.zip'
-#            displayName: 'Deploy to Azure Web App'
