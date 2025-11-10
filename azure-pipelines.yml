@@ -32,6 +32,15 @@ stages:
         npm -v
       displayName: 'Show Node and NPM versions'
 
+    - script: |
+        if [ ! -f package-lock.json ]; then
+          echo "Creando package-lock.json..."
+          npm install --package-lock-only
+        else
+          echo "package-lock.json ya existe"
+        fi
+      displayName: 'Ensure package-lock.json'
+      
     - task: Cache@2
       inputs:
         key: 'npm | "$(Agent.OS)" | package-lock.json'
