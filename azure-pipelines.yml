@@ -74,6 +74,7 @@ stages:
         projectName: '$(Build.Repository.Name)'
         branchName: '$(Build.SourceBranchName)'
         tenantName: 'nfr_lugapel-ast'
+        additionalParams: '--async'
 
 #    - task: PublishPipelineArtifact@1
 #      condition: always()
