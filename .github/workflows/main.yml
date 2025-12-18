@@ -1,4 +1,6 @@
 name: Checkmarx One Scan
+permissions:
+  contents: read
 
 on:
   push:
