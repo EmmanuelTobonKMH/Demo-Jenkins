@@ -44,6 +44,14 @@ stages:
     - script: echo "Skipping build — no build script defined"
       displayName: 'Build project (skipped)'
 
+    - task: Checkmarx AST@3
+      inputs:
+        CheckmarxService: 'juiceshop-connection'
+        projectName: '$(Build.Repository.Name)'
+        branchName: '$(Build.SourceBranchName)'
+        tenantName: 'nfr_lugapel-ast'
+        additionalParams: '--async'
+
 #    - script: |
 #        echo "=== Iniciando análisis de dependencias con npm audit ==="
 #        echo "Instalando dependencias..."
@@ -68,13 +76,6 @@ stages:
 #        fi
 #      displayName: 'Security Gate - Validar vulnerabilidades con npm audit'
 
-    - task: Checkmarx AST@3
-      inputs:
-        CheckmarxService: 'juiceshop-connection'
-        projectName: '$(Build.Repository.Name)'
-        branchName: '$(Build.SourceBranchName)'
-        tenantName: 'nfr_lugapel-ast'
-        additionalParams: '--async'
 
 #    - task: PublishPipelineArtifact@1
 #      condition: always()
