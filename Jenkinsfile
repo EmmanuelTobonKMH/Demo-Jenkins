@@ -1,4 +1,4 @@
-def MOBBURL
+def MOBBURL = ""
 
 pipeline {
     agent any
@@ -9,51 +9,43 @@ pipeline {
         GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins'
     }
 
-
     stages {
 
         stage('Checkout') {
             steps {
-                checkout scmGit(
-                    branches: [[name: '$ghprbActualCommit']],
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        credentialsId: '2760a171-4592-4fe0-84da-2c2f561c8c88',
-                        refspec: '+refs/pull/*:refs/remotes/origin/pr/*',
-                        url: "${GITHUBREPOURL}"
-                    ]]
-                )
+                checkout scm
             }
         }
 
         stage('SAST') {
-    steps {
-        sh '''
-            apt-get update
-            apt-get install -y curl
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y curl npm wget
 
-            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-            apt-get install -y nodejs
+                    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+                    apt-get install -y nodejs
 
-            node -v
-            npm -v
+                    node -v
+                    npm -v
 
-            wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
-            tar -xf checkmarx.tar.gz
+                    npm install -g mobbdev
 
-            ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
+                    wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
+                    tar -xf checkmarx.tar.gz
 
-            ./cx scan create \
-              --project-name my-test-project \
-              -s ./ \
-              --report-format json \
-              --scan-types sast \
-              --branch nobranch \
-              --threshold "sast-high=1"
-        '''
-    }
-}
+                    ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
 
+                    ./cx scan create \
+                      --project-name my-test-project \
+                      -s ./ \
+                      --report-format json \
+                      --scan-types sast \
+                      --branch main \
+                      --threshold "sast-high=1"
+                '''
+            }
+        }
     }
 
     post {
@@ -70,45 +62,16 @@ pipeline {
                 MOBBURL = sh(
                     returnStdout: true,
                     script: '''
-                      npx mobbdev@latest analyze \
-                        -f cx_result.json \
-                        -r $GITHUBREPOURL \
-                        --ref $ghprbSourceBranch \
-                        --api-key $MOBB_API_KEY \
-                        --ci
+                        mobb analyze \
+                          -f cx_result.json \
+                          -r $GITHUBREPOURL \
+                          --api-key $MOBB_API_KEY \
+                          --ci
                     '''
                 ).trim()
             }
 
             echo "Mobb Fix Link: ${MOBBURL}"
-
-            step([
-                $class: 'GitHubCommitStatusSetter',
-                commitShaSource: [
-                    $class: 'ManuallyEnteredShaSource',
-                    sha: "$ghprbActualCommit"
-                ],
-                contextSource: [
-                    $class: 'ManuallyEnteredCommitContextSource',
-                    context: 'Mobb Fix Link'
-                ],
-                reposSource: [
-                    $class: 'ManuallyEnteredRepositorySource',
-                    url: "$GITHUBREPOURL"
-                ],
-                statusBackrefSource: [
-                    $class: 'ManuallyEnteredBackrefSource',
-                    backref: "${MOBBURL}"
-                ],
-                statusResultSource: [
-                    $class: 'ConditionalStatusResultSource',
-                    results: [[
-                        $class: 'AnyBuildResult',
-                        message: 'Click on "Details" to access the Mobb Fix Link',
-                        state: 'SUCCESS'
-                    ]]
-                ]
-            ])
         }
     }
 }
