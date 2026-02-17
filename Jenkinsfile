@@ -1,11 +1,11 @@
-def MOBBURL = ""
+def MOBBURL
 
 pipeline {
     agent any
 
     environment {
-        MOBB_API_KEY   = credentials('MOBB_API_KEY')
-        CX_API_TOKEN   = credentials('CX_API_TOKEN')
+        MOBB_API_KEY = credentials('MOBB_API_KEY')
+        CX_API_TOKEN = credentials('CX_API_TOKEN')
         GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins'
     }
 
@@ -32,16 +32,18 @@ pipeline {
         stage('SAST') {
             steps {
                 sh '''
-                  wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
-                  tar -xf checkmarx.tar.gz
-                  ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
-                  ./cx scan create \
-                    --project-name my-test-project \
-                    -s ./ \
-                    --report-format json \
-                    --scan-types sast \
-                    --branch nobranch \
-                    --threshold "sast-high=1"
+                    wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
+                    tar -xf checkmarx.tar.gz
+
+                    ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
+
+                    ./cx scan create \
+                      --project-name my-test-project \
+                      -s ./ \
+                      --report-format json \
+                      --scan-types sast \
+                      --branch nobranch \
+                      --threshold "sast-high=1"
                 '''
             }
         }
@@ -54,53 +56,52 @@ pipeline {
         }
 
         failure {
-            node {
-                echo 'Pipeline failed! Running Mobb analysis...'
 
-                script {
-                    MOBBURL = sh(
-                        returnStdout: true,
-                        script: '''
-                          npx mobbdev@latest analyze \
-                            -f cx_result.json \
-                            -r $GITHUBREPOURL \
-                            --ref $ghprbSourceBranch \
-                            --api-key $MOBB_API_KEY \
-                            --ci
-                        '''
-                    ).trim()
-                }
+            echo 'Pipeline failed! Running Mobb analysis...'
 
-                echo "Mobb Fix Link: ${MOBBURL}"
-
-                step([
-                    $class: 'GitHubCommitStatusSetter',
-                    commitShaSource: [
-                        $class: 'ManuallyEnteredShaSource',
-                        sha: "$ghprbActualCommit"
-                    ],
-                    contextSource: [
-                        $class: 'ManuallyEnteredCommitContextSource',
-                        context: 'Mobb Fix Link'
-                    ],
-                    reposSource: [
-                        $class: 'ManuallyEnteredRepositorySource',
-                        url: "$GITHUBREPOURL"
-                    ],
-                    statusBackrefSource: [
-                        $class: 'ManuallyEnteredBackrefSource',
-                        backref: "${MOBBURL}"
-                    ],
-                    statusResultSource: [
-                        $class: 'ConditionalStatusResultSource',
-                        results: [[
-                            $class: 'AnyBuildResult',
-                            message: 'Click on "Details" to access the Mobb Fix Link',
-                            state: 'SUCCESS'
-                        ]]
-                    ]
-                ])
+            script {
+                MOBBURL = sh(
+                    returnStdout: true,
+                    script: '''
+                      npx mobbdev@latest analyze \
+                        -f cx_result.json \
+                        -r $GITHUBREPOURL \
+                        --ref $ghprbSourceBranch \
+                        --api-key $MOBB_API_KEY \
+                        --ci
+                    '''
+                ).trim()
             }
+
+            echo "Mobb Fix Link: ${MOBBURL}"
+
+            step([
+                $class: 'GitHubCommitStatusSetter',
+                commitShaSource: [
+                    $class: 'ManuallyEnteredShaSource',
+                    sha: "$ghprbActualCommit"
+                ],
+                contextSource: [
+                    $class: 'ManuallyEnteredCommitContextSource',
+                    context: 'Mobb Fix Link'
+                ],
+                reposSource: [
+                    $class: 'ManuallyEnteredRepositorySource',
+                    url: "$GITHUBREPOURL"
+                ],
+                statusBackrefSource: [
+                    $class: 'ManuallyEnteredBackrefSource',
+                    backref: "${MOBBURL}"
+                ],
+                statusResultSource: [
+                    $class: 'ConditionalStatusResultSource',
+                    results: [[
+                        $class: 'AnyBuildResult',
+                        message: 'Click on "Details" to access the Mobb Fix Link',
+                        state: 'SUCCESS'
+                    ]]
+                ]
+            ])
         }
     }
 }
