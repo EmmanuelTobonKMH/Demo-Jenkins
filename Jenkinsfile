@@ -9,9 +9,6 @@ pipeline {
         GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins'
     }
 
-    tools {
-        nodejs 'NodeJS'
-    }
 
     stages {
 
@@ -30,23 +27,33 @@ pipeline {
         }
 
         stage('SAST') {
-            steps {
-                sh '''
-                    wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
-                    tar -xf checkmarx.tar.gz
+    steps {
+        sh '''
+            apt-get update
+            apt-get install -y curl
 
-                    ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
+            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+            apt-get install -y nodejs
 
-                    ./cx scan create \
-                      --project-name my-test-project \
-                      -s ./ \
-                      --report-format json \
-                      --scan-types sast \
-                      --branch nobranch \
-                      --threshold "sast-high=1"
-                '''
-            }
-        }
+            node -v
+            npm -v
+
+            wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz
+            tar -xf checkmarx.tar.gz
+
+            ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
+
+            ./cx scan create \
+              --project-name my-test-project \
+              -s ./ \
+              --report-format json \
+              --scan-types sast \
+              --branch nobranch \
+              --threshold "sast-high=1"
+        '''
+    }
+}
+
     }
 
     post {
