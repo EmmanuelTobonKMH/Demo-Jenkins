@@ -164,5 +164,8 @@ sgp_12345678901234567890123456789012345678901234567890123456789012
 - Remove test files after validation
 - Some tokens require specific formatting (quotes, prefixes, etc.)
 - Case sensitivity matters for many patterns
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 7c66cd4 (New entrance)

@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+# first pipeline
+
+# azure-pipelines.yml (ejemplo Node.js)
+>>>>>>> 7c66cd4 (New entrance)
 trigger:
   branches:
     include:
@@ -6,13 +12,18 @@ trigger:
 pr:
   branches:
     include:
+<<<<<<< HEAD
       - main
+=======
+      - '*'         # ejecuta CI para PRs (validación)
+>>>>>>> 7c66cd4 (New entrance)
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
   nodeVersion: '18.x'
+<<<<<<< HEAD
 
 stages:
 - stage: BuildAndScan
@@ -20,12 +31,23 @@ stages:
   jobs:
   - job: build
     displayName: Build and Scan Code
+=======
+  webAppName: '$(webAppName)'        # define en Library o pipeline variables
+  azureSubscription: 'MiAzureSub'    # nombre del Service Connection
+
+stages:
+- stage: Build
+  displayName: Build & Test
+  jobs:
+  - job: build
+>>>>>>> 7c66cd4 (New entrance)
     steps:
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
       displayName: 'Use Node.js'
 
+<<<<<<< HEAD
     - script: npm i
       displayName: 'Install dependencies'
 
@@ -103,3 +125,40 @@ stages:
 #               appName: '$(webAppName)'
 #               package: '$(Pipeline.Workspace)/drop/**/*.zip'
 #             displayName: 'Deploy to Azure Web App'
+=======
+    - script: npm ci
+      displayName: 'npm ci'
+
+    - script: npm test
+      displayName: 'Run tests'
+
+    - script: npm run build
+      displayName: 'Build'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(System.DefaultWorkingDirectory)/dist'
+        ArtifactName: 'drop'
+      displayName: 'Publish artifact'
+
+- stage: Deploy
+  displayName: Deploy to Azure (main only)
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: deployWeb
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(webAppName)'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+            displayName: 'Deploy to Azure Web App'
+>>>>>>> 7c66cd4 (New entrance)
