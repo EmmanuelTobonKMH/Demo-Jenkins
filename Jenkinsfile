@@ -21,7 +21,7 @@ pipeline {
         // Run SAST scan
         stage('SAST') {
             steps {
-                sh 'wget https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz -O checkmarx.tar.gz'
+                sh 'curl -L -o checkmarx.tar.gz https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz'
                 sh 'tar -xf checkmarx.tar.gz'    
                 sh './cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN'
                 sh './cx scan create --project-name my-test-project -s ./ --report-format json --scan-types sast --branch nobranch  --threshold "sast-high=1"'
