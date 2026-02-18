@@ -2,56 +2,71 @@ def MOBBURL
 
 pipeline {
     agent any
-    // Setting up environment variables
+
     environment {
         MOBB_API_KEY = credentials('MOBB_API_KEY')
         CX_API_TOKEN = credentials('CX_API_TOKEN')
-        GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins' //change this to your GitHub Repository URL
+        GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins'
+        BRANCH_NAME = 'main'
     }
+
     tools {
         nodejs 'NodeJS'
     }
+
     stages {
-        // Checkout the source code from the branch being committed
+
         stage('Checkout') {
             steps {
                 checkout scm
-            }     
+            }
         }
-        // Run SAST scan
-        stage('SAST') {
+
+        stage('SAST - Checkmarx') {
             steps {
-                sh 'curl -L -o checkmarx.tar.gz https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz'
-                sh 'tar -xf checkmarx.tar.gz'    
-                sh './cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN'
-                sh './cx scan create --project-name my-test-project -s ./ --report-format json --scan-types sast --branch nobranch  --threshold "sast-high=1"'
+                sh '''
+                curl -L -o checkmarx.tar.gz https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz
+                tar -xf checkmarx.tar.gz
+
+                ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
+
+                ./cx scan create \
+                  --project-name my-test-project \
+                  -s ./ \
+                  --scan-types sast \
+                  --branch $BRANCH_NAME \
+                  --report-format json \
+                  --output-path cx_result.json \
+                '''
             }
         }
     }
+
     post {
-        // If SAST scan complete with no issues found, pipeline is successful
+
         success {
             echo 'Pipeline succeeded!'
         }
-        // If SAST scan complete WITH issues found, pipeline enters fail state, triggering Mobb autofix analysis
-        failure {
-            echo 'Pipeline failed!'
 
-                script {
-                    MOBBURL = sh(returnStdout: true,
-                                script:'npx mobbdev@latest analyze -f cx_result.json -r $GITHUBREPOURL --ref $ghprbSourceBranch --api-key $MOBB_API_KEY  --ci')
-                                .trim()
-                }     
-            echo 'Mobb Fix Link: $MOBBURL'
-            // Provide a "Mobb Fix Link" in the GitHub pull request page as a commit status
-            step([$class: 'GitHubCommitStatusSetter', 
-                    commitShaSource: [$class: 'ManuallyEnteredShaSource', sha: '$ghprbActualCommit'], 
-                    contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: 'Mobb Fix Link'], 
-                    reposSource: [$class: 'ManuallyEnteredRepositorySource', url: '$GITHUBREPOURL'], 
-                    statusBackrefSource: [$class: 'ManuallyEnteredBackrefSource', backref: "${MOBBURL}"], 
-                    statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                        results: [[$class: 'AnyBuildResult', message: 'Click on "Details" to access the Mobb Fix Link', state: 'SUCCESS']]]
-            ])
+        failure {
+            echo 'SAST failed - Running Mobb Autofix...'
+
+            script {
+                MOBBURL = sh(
+                    returnStdout: true,
+                    script: '''
+                    npx mobbdev@latest analyze \
+                      -f cx_result.json \
+                      -r $GITHUBREPOURL \
+                      --ref main \
+                      --mobb-project-name Demo-Jenkins \
+                      --api-key $MOBB_API_KEY \
+                      --ci
+                    '''
+                ).trim()
+            }
+
+            echo "Mobb Fix Link: ${MOBBURL}"
         }
     }
 }
