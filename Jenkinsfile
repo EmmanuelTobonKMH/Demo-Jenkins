@@ -6,7 +6,7 @@ pipeline {
     environment {
         MOBB_API_KEY = credentials('MOBB_API_KEY')
         CX_API_TOKEN = credentials('CX_API_TOKEN')
-        GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins.git' //change this to your GitHub Repository URL
+        GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins' //change this to your GitHub Repository URL
     }
     tools {
         nodejs 'NodeJS'
