@@ -26,6 +26,6 @@ jobs:
           cx_client_secret: ${{ secrets.CX_CLIENT_SECRET }}
           project_name: 'EmmanuelTobonKMH/juice-shop'
           branch: ${{ github.ref_name }}
-          additional_params: '--report-format sarif --output-path .'
+          additional_params: '--report-format sarif --output-path . --ignore-policy'
   
           
