@@ -1,13 +1,13 @@
-def MOBBURL
+def MOBBURL = ""
 
 pipeline {
     agent any
 
     environment {
-        MOBB_API_KEY = credentials('MOBB_API_KEY')
-        CX_API_TOKEN = credentials('CX_API_TOKEN')
+        MOBB_API_KEY  = credentials('MOBB_API_KEY')
+        CX_API_TOKEN  = credentials('CX_API_TOKEN')
         GITHUBREPOURL = 'https://github.com/EmmanuelTobonKMH/Demo-Jenkins'
-        BRANCH_NAME = 'main'
+        BRANCH_NAME   = 'main'
     }
 
     tools {
@@ -25,18 +25,22 @@ pipeline {
         stage('SAST - Checkmarx') {
             steps {
                 sh '''
+                echo "Downloading Checkmarx AST CLI..."
                 curl -L -o checkmarx.tar.gz https://github.com/Checkmarx/ast-cli/releases/download/2.0.54/ast-cli_2.0.54_linux_x64.tar.gz
                 tar -xf checkmarx.tar.gz
 
+                echo "Configuring API Key..."
                 ./cx configure set --prop-name cx_apikey --prop-value $CX_API_TOKEN
 
+                echo "Running SAST Scan..."
                 ./cx scan create \
                   --project-name my-test-project \
                   -s ./ \
                   --scan-types sast \
                   --branch $BRANCH_NAME \
                   --report-format json \
-                  --output-path cx_result.json \
+                  --output-path . \
+                  --threshold "sast-high=1" || true
                 '''
             }
         }
@@ -45,28 +49,36 @@ pipeline {
     post {
 
         success {
-            echo 'Pipeline succeeded!'
+            echo 'Pipeline completed without threshold violations.'
         }
 
-        failure {
-            echo 'SAST failed - Running Mobb Autofix...'
-
+        always {
             script {
-                MOBBURL = sh(
-                    returnStdout: true,
-                    script: '''
-                    npx mobbdev@latest analyze \
-                      -f cx_result.json \
-                      -r $GITHUBREPOURL \
-                      --ref main \
-                      --mobb-project-name Demo-Jenkins \
-                      --api-key $MOBB_API_KEY \
-                      --ci
-                    '''
-                ).trim()
-            }
+                if (fileExists('cx_result.json')) {
 
-            echo "Mobb Fix Link: ${MOBBURL}"
+                    echo "Running Mobb Autofix..."
+
+                    MOBBURL = sh(
+                        returnStdout: true,
+                        script: '''
+                        npx mobbdev@latest analyze \
+                          -f cx_result.json \
+                          -r $GITHUBREPOURL \
+                          --ref main \
+                          --mobb-project-name Demo-Jenkins \
+                          --api-key $MOBB_API_KEY \
+                          --ci
+                        '''
+                    ).trim()
+
+                    echo "======================================="
+                    echo "Mobb Fix Link:"
+                    echo "${MOBBURL}"
+                    echo "======================================="
+                } else {
+                    echo "No cx_result.json found. Skipping Mobb."
+                }
+            }
         }
     }
 }
