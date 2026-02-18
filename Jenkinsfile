@@ -40,7 +40,7 @@ pipeline {
                   --branch $BRANCH_NAME \
                   --report-format json \
                   --output-path . \
-                  --ignore-policy
+                  --threshold "sast-high=1" || true
                 '''
             }
         }
@@ -49,43 +49,44 @@ pipeline {
     post {
 
         success {
-            echo 'Pipeline completed successfully.'
+            echo 'Pipeline completed without threshold violations.'
         }
 
         always {
             script {
-                if (fileExists('cx_result.json')) {
+    if (fileExists('cx_result.json')) {
 
-                    echo "Running Mobb Autofix..."
+        echo "Running Mobb Autofix..."
 
-                    try {
-                        MOBBURL = sh(
-                            returnStdout: true,
-                            script: '''
-                            npx mobbdev@latest analyze \
-                              -f cx_result.json \
-                              -r $GITHUBREPOURL \
-                              --ref main \
-                              --mobb-project-name Demo-Jenkins \
-                              --api-key $MOBB_API_KEY \
-                              --ci \
-                              --polling || true
-                            '''
-                        ).trim()
+        try {
+            MOBBURL = sh(
+                returnStdout: true,
+                script: '''
+                npx mobbdev@latest analyze \
+                  -f cx_result.json \
+                  -r $GITHUBREPOURL \
+                  --ref main \
+                  --mobb-project-name Demo-Jenkins \
+                  --api-key $MOBB_API_KEY \
+                  --ci \
+                  --polling || true
+                '''
+            ).trim()
 
-                        echo "======================================="
-                        echo "Mobb Fix Link:"
-                        echo "${MOBBURL}"
-                        echo "======================================="
+            echo "======================================="
+            echo "Mobb Fix Link:"
+            echo "${MOBBURL}"
+            echo "======================================="
 
-                    } catch (err) {
-                        echo "Mobb execution failed but pipeline will continue."
-                    }
+        } catch (err) {
+            echo "Mobb execution failed but pipeline will continue."
+        }
 
-                } else {
-                    echo "No cx_result.json found. Skipping Mobb."
-                }
-            }
+    } else {
+        echo "No cx_result.json found. Skipping Mobb."
+    }
+}
+
         }
     }
 }
