@@ -15,16 +15,8 @@ pipeline {
         // Checkout the source code from the branch being committed
         stage('Checkout') {
             steps {
-                checkout scmGit(
-                    branches: [[name: '$ghprbActualCommit']], 
-                    extensions: [], 
-                    userRemoteConfigs: [[
-                        credentialsId: '2760a171-4592-4fe0-84da-2c2f561c8c88', 
-                        refspec: '+refs/pull/*:refs/remotes/origin/pr/*', 
-                        url: "${GITHUBREPOURL}"]]
-                        )
-
-            }
+                checkout scm
+            }     
         }
         // Run SAST scan
         stage('SAST') {
