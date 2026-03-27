@@ -1,3 +1,4 @@
+[![Board Status](https://dev.azure.com/etobonKMH/3c82def3-653c-40d3-ac2b-a0ec5293951b/9140f1e4-a4a5-4146-a39b-13f62bc7d98d/_apis/work/boardbadge/2026763c-b572-4962-9a65-c85ffaabf7ab)](https://dev.azure.com/etobonKMH/3c82def3-653c-40d3-ac2b-a0ec5293951b/_boards/board/t/9140f1e4-a4a5-4146-a39b-13f62bc7d98d/Microsoft.EpicCategory)
 # GitLab Secret Detection Test Patterns
 
 **WARNING: These are test patterns only! Do not use real credentials or tokens.**
