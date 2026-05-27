@@ -1,7 +1,8 @@
 FROM node:18 as installer
 COPY . /juice-shop
 WORKDIR /juice-shop
-RUN npm i -g typescript ts-node
+# Pinned versions to ensure reproducible builds and mitigate supply-chain risks
+RUN npm i -g typescript@5.2.2 ts-node@10.9.1
 RUN npm install --omit=dev --unsafe-perm
 RUN npm dedupe
 RUN rm -rf frontend/node_modules
