@@ -1,24 +1,20 @@
 name: Checkmarx One Scan
 permissions:
   contents: read
-
 on:
   push:
     branches:
       - main
       - master
       - dev
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Checkmarx AST Github Action
-        uses: Checkmarx/ast-github-action@2.0.23
+        uses: Checkmarx/ast-github-action@c52fa63dbd4916520882e10456d66ff4dd7bf754
         with:
           base_uri: 'https://ast.checkmarx.net'
           cx_tenant: 'nfr_lugapel-ast'
@@ -26,6 +22,4 @@ jobs:
           cx_client_secret: ${{ secrets.CX_CLIENT_SECRET }}
           project_name: 'EmmanuelTobonKMH/juice-shop'
           branch: ${{ github.ref_name }}
-          additional_params: '--report-format sarif --output-path . --ignore-policy'
-  
-          
+          additional_params: '--report-format sarif --output-path --ignore-policy'
