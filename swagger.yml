@@ -50,3 +50,5 @@ components:
 security:
   -
     bearerAuth: []
+
+# This API specification is designed to be concise and focused on the essential elements required for a secure and efficient B2B ordering system. It includes a single endpoint for creating customer orders, with clear definitions of the request and response structures. The use of JWT for authentication ensures that only authorized users can access the API, while the detailed schema definitions provide clarity on the expected data formats. The API is structured to facilitate easy integration with existing systems, allowing enterprise customers to seamlessly place orders and
