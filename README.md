@@ -127,10 +127,12 @@ mailgun_key="key-1234567890abcdef1234567890abcdef"
 mailgun_signing="1234567890abcdef1234567890abcdef-12345678-12345678"
 
 # New Relic User API Key (27 chars after NRAK-)
-"NRAK-123456789012345678901234567"
+"NRAK-<set_in_env_or_vault>"
 
 # New Relic User API ID (64 chars)
-newrelic_api="1234567890123456789012345678901234567890123456789012345678901234"
+# Do not store the actual value here. Set the value in environment or a secret manager.
+newrelic_api="${NEW_RELIC_USER_API_ID}"
+<!-- TODO: If this README previously contained an actual key, revoke/rotate it immediately. -->
 ```
 
 ### Infrastructure Tokens
